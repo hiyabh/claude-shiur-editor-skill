@@ -1,0 +1,11 @@
+# ליבה - נדרש תמיד (בניית ה-DOCX)
+python-docx>=1.1.0
+
+# מסלול יוטיוב בלבד
+yt-dlp>=2025.1.1
+
+# מאיץ את מסלול הכתוביות ועוקף חסימות של yt-dlp. אופציונלי אך מומלץ.
+# חייב 1.0+ - ה-API (YouTubeTranscriptApi().list) ומחלקות החריגות
+# (IpBlocked / RequestBlocked / PoTokenRequired) לא קיימים ב-0.6.x, ואז
+# הריצה קורסת בשגיאה שלא נתפסת במקום ליפול חיננית למסלול הבא.
+youtube-transcript-api>=1.0.0

@@ -1,0 +1,11 @@
+yt-dlp>=2025.1.1
+youtube-transcript-api>=1.0.0
+
+# --- מסלול Whisper המקומי בלבד. כבד: מאות MB + מודל ~1.6GB בהורדה ראשונה. ---
+# להסיר את ההערה רק כשבאמת מגיעים לשם:
+# faster-whisper>=1.0.0
+#
+# בנוסף נדרשים הבינאריים ffmpeg + ffprobe ב-PATH (לא ניתנים להתקנה דרך pip):
+#   Windows : winget install Gyan.FFmpeg
+#   macOS   : brew install ffmpeg
+#   Linux   : sudo apt install ffmpeg

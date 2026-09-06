@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>עורך השיעורים — סקיל ל-Claude Code</title>
+<meta name="description" content="הופך תמלול של שיעור או דרשה למסמך Word ערוך, מסודר ומנוקד — בלי לקצר אף נושא.">
+<!-- Inline SVG favicon: a tab icon with no extra network request. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%9C%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0f1115; --card:#181b22; --card-2:#1e222b;
+  --ink:#f3f5f8; --muted:#9aa3b2; --gold:#ffd36e; --line:#262b34; --green:#7ee08a;
+  /* Strong curves — the built-in CSS easings are too weak to feel intentional. */
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-in-out:cubic-bezier(.77,0,.175,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:100%/1.65 "Segoe UI",system-ui,Arial,Helvetica,sans-serif;
+  font-size:16px;
+}
+.wrap{max-width:880px; margin:0 auto; padding:0 20px 90px}
+
+/* ---------- entrance: staggered, short, decorative only ---------- */
+@keyframes rise{to{opacity:1; transform:none}}
+.rise{opacity:0; transform:translateY(10px); animation:rise .5s var(--ease-out) forwards}
+.rise:nth-child(1){animation-delay:0ms}
+.rise:nth-child(2){animation-delay:60ms}
+.rise:nth-child(3){animation-delay:120ms}
+.rise:nth-child(4){animation-delay:180ms}
+
+/* ---------- header ---------- */
+header{padding:64px 0 8px}
+h1{
+  font-size:clamp(1.9rem,5.2vw,2.9rem); line-height:1.1; letter-spacing:-.02em;
+  margin:0 0 12px; font-weight:700;
+}
+.sub{color:var(--muted); font-size:1.06rem; margin:0 0 6px; max-width:60ch}
+.brand{color:var(--gold); font-weight:600}
+
+h2{
+  font-size:1.32rem; letter-spacing:-.01em; margin:44px 0 14px; font-weight:700;
+}
+h3{font-size:1rem; margin:0 0 10px; color:var(--gold); font-weight:600; letter-spacing:0}
+p{margin:0 0 14px}
+
+/* ---------- surfaces ---------- */
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:18px 20px; margin:0 0 14px;
+}
+.cta{display:flex; gap:10px; flex-wrap:wrap; margin:22px 0 6px}
+.btn{
+  display:inline-block; background:var(--gold); color:#1a1407; text-decoration:none;
+  font-weight:700; padding:11px 20px; border-radius:11px; border:1px solid transparent;
+  transition:transform 160ms var(--ease-out), filter 160ms var(--ease-out);
+}
+.btn.ghost{background:transparent; color:var(--ink); border-color:var(--line)}
+.btn:active{transform:scale(.97)}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{filter:brightness(1.07)}
+  .btn.ghost:hover{border-color:var(--gold); color:var(--gold); filter:none}
+}
+
+/* ---------- before / after ---------- */
+.ba{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media (max-width:700px){.ba{grid-template-columns:1fr}}
+.ba .card{margin:0; display:flex; flex-direction:column}
+.ba .card.after{border-color:#3a4130}
+.sample{
+  background:var(--card-2); border-radius:10px; padding:14px 15px; margin-top:auto;
+  font-size:.93rem; line-height:1.75; color:#d8dde5;
+}
+.sample .dim{color:#6b7382}
+.pasuk{
+  border-inline-start:2px solid var(--gold); padding-inline-start:12px;
+  margin:10px 0; font-weight:600;
+}
+.src{color:var(--muted); font-weight:400; font-size:.88em}
+.hh{color:var(--gold); font-weight:700; display:block; margin-bottom:6px}
+
+/* ---------- lists ---------- */
+ul{padding-inline-start:20px; margin:0}
+li{margin:7px 0}
+/* This list supplies its own numbers, so it must not also draw bullets. */
+ul.steps{list-style:none; padding-inline-start:0}
+ul.steps li{display:flex; gap:9px; align-items:baseline}
+.num{color:var(--green); font-weight:700; font-variant-numeric:tabular-nums; flex:none}
+.tag{color:var(--muted); font-size:.9rem; margin-top:12px}
+
+/* ---------- install block ---------- */
+.promptbox{position:relative}
+.copybtn{
+  position:absolute; inset-block-start:14px; inset-inline-end:14px;
+  background:#222833; color:var(--ink); border:1px solid var(--line);
+  border-radius:9px; padding:7px 14px; cursor:pointer; font-size:.85rem;
+  font-family:inherit; font-weight:600; min-width:82px;
+  transition:transform 160ms var(--ease-out), background-color 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+.copybtn:active{transform:scale(.95)}
+.copybtn[data-done]{background:var(--green); color:#0f1115; border-color:var(--green)}
+@media (hover:hover) and (pointer:fine){ .copybtn:hover{border-color:var(--gold)} }
+pre{
+  direction:rtl; text-align:right; white-space:pre-wrap; word-wrap:break-word;
+  margin:0; padding:46px 4px 4px; font-size:.92rem; line-height:1.8;
+  font-family:inherit; color:#dfe4ec;
+}
+code{
+  background:var(--card-2); padding:2px 6px; border-radius:5px;
+  font-family:Consolas,Menlo,monospace; font-size:.9em; direction:ltr;
+  display:inline-block;
+}
+
+/* ---------- table ---------- */
+.tbl{width:100%; border-collapse:collapse; font-size:.95rem}
+.tbl th,.tbl td{border-bottom:1px solid var(--line); padding:10px 8px; text-align:right; vertical-align:top}
+.tbl th{color:var(--gold); font-weight:600}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ---------- faq ---------- */
+details{border-bottom:1px solid var(--line); padding:13px 2px}
+details:last-of-type{border-bottom:none}
+summary{
+  cursor:pointer; font-weight:600; list-style:none;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{
+  content:"+"; color:var(--gold); font-size:1.25rem; line-height:1; flex:none;
+  transition:transform 200ms var(--ease-out);
+}
+details[open] summary::after{transform:rotate(45deg)}
+details p{margin:10px 0 2px; color:var(--muted)}
+
+.foot{
+  margin-top:52px; padding-top:22px; border-top:1px solid var(--line);
+  color:var(--muted); font-size:.94rem;
+}
+.foot a{color:var(--gold)}
+a{color:var(--gold)}
+
+/* ---------- accessibility ---------- */
+@media (prefers-reduced-motion:reduce){
+  .rise{opacity:1; transform:none; animation:none}
+  *{transition-duration:.01ms !important}
+  summary::after{transition:none}
+}
+@media (prefers-contrast:more){
+  .card{border-color:#5a6473}
+  .sub,.tag,details p,.foot{color:#c6ccd6}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1 class="rise">📜 עורך השיעורים</h1>
+  <p class="sub rise">סקיל ל-Claude Code שהופך תמלול של שיעור, דרשה או הרצאה
+     למסמך Word ערוך ומסודר — עם כותרות, פסוקים מנוקדים ומקורות מדויקים.</p>
+  <p class="sub rise"><span class="brand">👈 בין קודש לקלוד</span></p>
+  <div class="cta rise">
+    <a class="btn" href="shiur-editor-skill.tar.gz">הורדת החבילה</a>
+    <a class="btn ghost" href="https://github.com/hiyabh/claude-shiur-editor-skill">קוד המקור ב-GitHub</a>
+  </div>
+</header>
+
+<h2>מה זה עושה</h2>
+<div class="card">
+  <p>אתה נותן לו תמלול גולמי — הוא מחזיר מסמך שאפשר להדפיס ולחלק.</p>
+  <ul class="steps">
+    <li><span class="num">1.</span><span>מנקה חותמות זמן, גמגומים, מילות מילוי וכפילויות.</span></li>
+    <li><span class="num">2.</span><span>מתקן שגיאות דקדוק, כתיב ושיבושי תמלול.</span></li>
+    <li><span class="num">3.</span><span>מארגן את החומר בכותרות ותת-כותרות לפי נושאים.</span></li>
+    <li><span class="num">4.</span><span>כותב בגוף ראשון — כאילו אתה מוסר את השיעור.</span></li>
+    <li><span class="num">5.</span><span>מזהה כל פסוק, כותב אותו <b>מנוקד ובמלואו</b> ומוסיף מקור מדויק.</span></li>
+    <li><span class="num">6.</span><span>בונה קובץ Word בעברית — RTL מלא, גופן David, מספרי עמודים.</span></li>
+  </ul>
+  <p class="tag"><b>חשוב:</b> זה לא מקצר ולא מסכם. כל נושא, כל משל וכל דוגמה
+     מהמקור נשארים — רק בעברית תקנית ומסודרת.</p>
+</div>
+
+<h2>לפני ואחרי</h2>
+<div class="ba">
+  <div class="card">
+    <h3>התמלול הגולמי</h3>
+    <div class="sample">
+      <span class="dim">0:45</span> אז אה... אנחנו רוצים היום לדבר על על
+      הנושא של בראשית ברא אלוהים את השמיים ואת הארץ
+      <span class="dim">1:02</span> וזה זה בעצם אה הפסוק הראשון בתורה
+      נכון? אז מה זה בעצם אומר לנו...
+    </div>
+  </div>
+  <div class="card after">
+    <h3>אחרי העריכה</h3>
+    <div class="sample">
+      <span class="hh">פתיחה: הפסוק הראשון</span>
+      התורה נפתחת בפסוק שכולנו מכירים:
+      <div class="pasuk">"בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ"
+        <span class="src">(בראשית א,א)</span></div>
+      ויש כאן שאלה יסודית שצריך לעמוד עליה...
+    </div>
+  </div>
+</div>
+<p class="tag">שים לב מה קרה לפסוק: בתמלול הוא הופיע כטקסט רץ בלי ניקוד ובלי מקור —
+   ובמסמך הוא מופיע במלואו, מנוקד לפי נוסח המקרא, עם ציון הפרק והפסוק.</p>
+
+<h2>שלוש דרכים להזין שיעור</h2>
+<div class="card">
+  <ul>
+    <li><b>קישור יוטיוב</b> — מדביקים את הקישור, והסקיל מוריד את הכתוביות בעצמו
+        (בלי להוריד את הווידאו). זו הדרך הכי מהירה.</li>
+    <li><b>קובץ תמלול</b> — כל קובץ טקסט, גם אם הוא מלא בחותמות זמן ושגיאות.</li>
+    <li><b>קובץ Word</b> — אם כבר העתקת את התמלול למסמך.</li>
+  </ul>
+  <p class="tag">אין לסרטון כתוביות בעברית? החבילה כוללת סקיל שני שמתמלל את
+     האודיו במחשב שלך, בלי להעלות אותו לשום מקום.</p>
+</div>
+
+<h2>התקנה בהדבקה אחת</h2>
+<p>פותחים את Claude Code, מדביקים את הבלוק הבא, והוא מתקין הכול לבד:</p>
+<div class="card promptbox">
+  <button class="copybtn" onclick="copyPrompt()" type="button">העתק</button>
+<pre id="prompt">הי קלוד! התקן לי בבקשה את סקיל "עורך השיעורים" (shiur-editor).
+1. זהה את מערכת ההפעלה שלי ואת הנתיב ~/.claude/skills/ (ב-Windows: C:\Users\&lt;user&gt;\.claude\skills\). צור את התיקייה אם אינה קיימת.
+2. הורד את החבילה: https://hiyabh.github.io/claude-shiur-editor-skill/shiur-editor-skill.tar.gz
+3. חלץ ממנה את שתי התיקיות — shiur-editor וגם youtube-transcript — אל ~/.claude/skills/. אל תדרוס סקיל קיים בלי לשאול אותי.
+4. הרץ את בדיקת ההתקנה: python "~/.claude/skills/shiur-editor/scripts/preflight.py" (פתור את הנתיב עם os.path.expanduser, אל תסמוך על ~ במעטפת). מסור לי את הדוח בעברית, ואם חסר משהו — תגיד לי בדיוק מה להתקין.
+5. הסבר לי בקצרה איך מפעילים: שאני פשוט אומר "ערוך לי את השיעור הזה" ומצרף קישור יוטיוב או קובץ תמלול.</pre>
+</div>
+
+<h2>מה צריך שיהיה מותקן</h2>
+<div class="card">
+  <table class="tbl">
+    <tr><th>מתי</th><th>מה</th><th>כמה זה</th></tr>
+    <tr>
+      <td><b>תמיד</b></td>
+      <td><code>python-docx</code> — בניית המסמך</td>
+      <td>שניות</td>
+    </tr>
+    <tr>
+      <td><b>למסלול יוטיוב</b></td>
+      <td><code>yt-dlp</code> + <code>youtube-transcript-api</code></td>
+      <td>שניות</td>
+    </tr>
+    <tr>
+      <td>רק כשאין כתוביות</td>
+      <td><code>faster-whisper</code> + <code>ffmpeg</code> + מודל עברית</td>
+      <td>כ-1.6GB, פעם אחת</td>
+    </tr>
+  </table>
+  <p class="tag">בדיקת ההתקנה (שלב 4 בבלוק למעלה) אומרת לך בדיוק מה חסר ומה
+     הפקודה להתקין — אין צורך לנחש. השורה השלישית נדרשת רק אם באמת תיתקל
+     בסרטון בלי כתוביות עברית.</p>
+</div>
+
+<h2>שאלות שנשאלות</h2>
+<div class="card">
+  <details>
+    <summary>זה מסכם לי את השיעור?</summary>
+    <p>לא, וזה בכוונה. סיכום מוריד תוכן; הסקיל הזה שומר על כל נושא, כל מקור וכל
+       דוגמה. ההיקף של התוצר דומה להיקף המקור — רק ערוך, מסודר וקריא.</p>
+  </details>
+  <details>
+    <summary>אפשר לסמוך על הפסוקים והמקורות?</summary>
+    <p>ההוראה לקלוד היא לכתוב כל פסוק לפי נוסח המקרא ולא לפי מה שנשמע בתמלול,
+       ולציין ספר, פרק ופסוק. עדיין — <b>תמיד תעבור על הפסוקים לפני שאתה מחלק
+       את המסמך.</b> תמלול אוטומטי משבש פסוקים, ובמונחים תורניים כדאי עין אנושית.</p>
+  </details>
+  <details>
+    <summary>מה קורה אם לסרטון אין כתוביות בעברית?</summary>
+    <p>הסקיל השני שבחבילה מוריד את האודיו ומתמלל אותו במחשב שלך. זה לוקח בערך
+       25 דקות לשעת שיעור ודורש התקנה כבדה יותר (ראה הטבלה למעלה). אם הוא לא
+       מותקן — קלוד יגיד לך ויציע להמשיך מקובץ תמלול שתביא בעצמך.</p>
+  </details>
+  <details>
+    <summary>זה עובד על Mac או על לינוקס?</summary>
+    <p>כן. המסמך נבנה תקין בכל מערכת הפעלה. גופן David מותקן בדרך כלל רק
+       ב-Windows — בלעדיו Word או LibreOffice יציגו גופן עברי חלופי, וה-RTL,
+       היישור ומספרי העמודים נשארים בדיוק אותו דבר. ב-macOS הגופן מגיע עם
+       Microsoft Office; בלינוקס חבילת <code>culmus</code> נותנת תחליף.
+       הדפסה ישירה עובדת רק ב-Windows; בשאר — ממירים ל-PDF ומדפיסים.</p>
+  </details>
+  <details>
+    <summary>התמלול שלי נשלח לאיזה שרת?</summary>
+    <p>הכתוביות מיוטיוב מגיעות מיוטיוב עצמו, והעריכה נעשית ע"י קלוד — כלומר
+       תוכן השיעור עובר דרך Claude, כמו כל דבר אחר שאתה כותב לו. תמלול Whisper,
+       לעומת זאת, רץ <b>מקומית לגמרי</b> על המחשב שלך; האודיו לא עוזב אותו.</p>
+  </details>
+</div>
+
+<div class="foot">
+  <p><span class="brand">👈 בין קודש לקלוד</span> ·
+     <a href="https://chat.whatsapp.com/Hr8UI2Oy6lkJTPY3tizdSd?s=cl&amp;p=a&amp;mlu=1">הצטרפות לקבוצה</a></p>
+  <p>הסקיל מסופק כמו שהוא, לשימוש חופשי. מותר להעביר הלאה.</p>
+</div>
+
+</div>
+
+<script>
+function copyPrompt(){
+  var btn = document.querySelector('.copybtn');
+  var text = document.getElementById('prompt').innerText;
+
+  function done(ok){
+    btn.textContent = ok ? 'הועתק ✓' : 'בחר והעתק';
+    if (ok) { btn.setAttribute('data-done',''); }
+    setTimeout(function(){
+      btn.textContent = 'העתק';
+      btn.removeAttribute('data-done');
+    }, 1600);
+  }
+
+  // Clipboard API needs a secure context; fall back so the button is never dead.
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ done(true); },
+                                            function(){ legacy(); });
+  } else {
+    legacy();
+  }
+
+  function legacy(){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly','');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      done(ok);
+    } catch(e){ done(false); }
+  }
+}
+</script>
+</body>
+</html>
