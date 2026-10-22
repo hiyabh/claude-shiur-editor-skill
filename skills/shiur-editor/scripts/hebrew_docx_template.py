@@ -137,6 +137,7 @@ def add_heading(doc, text, level=1):
     apply_align(p, WD_ALIGN_PARAGRAPH.CENTER)  # IRON RULE: headings centered
     p.paragraph_format.space_before = Pt(12)
     p.paragraph_format.space_after = Pt(6)
+    p.paragraph_format.keep_with_next = True  # never strand a heading at a page bottom
     run = p.add_run(text)
     style_run(run, size=sizes.get(level, 13), bold=True)
     return p
@@ -253,6 +254,12 @@ def _repeat_header(table):
     trPr.append(OxmlElement('w:tblHeader'))
 
 
+def _no_row_split(table):
+    """Keep each row on one page - a row split across pages reads as two rows."""
+    for row in table.rows:
+        row._tr.get_or_add_trPr().append(OxmlElement('w:cantSplit'))
+
+
 def add_table_md(doc, header, rows, col_widths=None):
     if col_widths is None:
         col_widths = auto_col_widths(header, rows)
@@ -271,6 +278,7 @@ def add_table_md(doc, header, rows, col_widths=None):
             row.cells[i].width = Cm(w)
     _fix_layout(table, col_widths)
     _repeat_header(table)
+    _no_row_split(table)
     return table
 
 def parse_md_table(lines, start):

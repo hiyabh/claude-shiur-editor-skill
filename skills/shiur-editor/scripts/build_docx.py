@@ -11,6 +11,7 @@ Layout (shiur-editor house style):
   - Body / psukim / lists: 14pt, justified (both edges).
   - Headings: H1 title 16pt centered; H2-H4 14pt justified; all bold.
   - Font stays David (IRON RULE) — do NOT drop it.
+  - Headings are keep-with-next: a heading never ends a page.
 Pasuk citations (markdown blockquotes `> `) are rendered indented + bold.
 
 These sizes/alignments are overridden locally here, not in the vendored
@@ -81,6 +82,10 @@ def add_heading_local(doc, text, level=1):
     set_rtl_paragraph(p)
     p.paragraph_format.space_before = Pt(12)
     p.paragraph_format.space_after = Pt(6)
+    # Never leave a heading orphaned as the last line of a page: bind it to
+    # the following paragraph (chains through stacked H2+H3 headings too).
+    p.paragraph_format.keep_with_next = True
+    p.paragraph_format.keep_together = True
     run = p.add_run(text)
     style_run(run, size=HEADING_SIZES.get(level, BODY_SIZE), bold=True)
     return p
