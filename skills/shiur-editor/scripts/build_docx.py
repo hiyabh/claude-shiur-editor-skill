@@ -12,7 +12,9 @@ Layout (shiur-editor house style):
   - Headings: H1 title 16pt centered; H2-H4 14pt justified; all bold.
   - Font stays David (IRON RULE) — do NOT drop it.
   - Headings are keep-with-next: a heading never ends a page.
-Pasuk citations (markdown blockquotes `> `) are rendered indented + bold.
+Pasuk citations (markdown blockquotes `> `) are rendered indented. Inside a
+pasuk only the **marked** words are bold - the words the speaker actually said
+when he quoted part of it.
 
 These sizes/alignments are overridden locally here, not in the vendored
 hebrew_docx_template.py sitting next to this file (that copy is the shared
@@ -91,12 +93,8 @@ def add_heading_local(doc, text, level=1):
     return p
 
 
-def add_body_para(doc, text, size=BODY_SIZE):
-    """Justified body paragraph, preserving **bold** spans."""
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    set_rtl_paragraph(p)
-    p.paragraph_format.space_after = Pt(4)
+def add_marked_runs(p, text, size):
+    """Add runs to p: **spans** bold, everything else regular."""
     for part in re.split(r'(\*\*.+?\*\*)', text):
         if part.startswith('**') and part.endswith('**'):
             run = p.add_run(part[2:-2])
@@ -104,6 +102,15 @@ def add_body_para(doc, text, size=BODY_SIZE):
         elif part:
             run = p.add_run(part)
             style_run(run, size=size)
+
+
+def add_body_para(doc, text, size=BODY_SIZE):
+    """Justified body paragraph, preserving **bold** spans."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    set_rtl_paragraph(p)
+    p.paragraph_format.space_after = Pt(4)
+    add_marked_runs(p, text, size)
     return p
 
 
@@ -171,7 +178,11 @@ def add_source_line(doc, text):
 
 
 def add_quote_para(doc, text):
-    """Pasuk citation — indented both sides, bold, justified, slight spacing."""
+    """Pasuk citation — indented both sides, justified, slight spacing.
+
+    Only the **marked** words (the ones the speaker actually said) are bold;
+    the rest of the completed pasuk and its source stay regular.
+    """
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     set_rtl_paragraph(p)
@@ -179,8 +190,7 @@ def add_quote_para(doc, text):
     p.paragraph_format.left_indent = Cm(1.0)
     p.paragraph_format.space_before = Pt(4)
     p.paragraph_format.space_after = Pt(4)
-    run = p.add_run(text)
-    style_run(run, size=QUOTE_SIZE, bold=True)
+    add_marked_runs(p, text, QUOTE_SIZE)
     return p
 
 
